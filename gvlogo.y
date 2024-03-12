@@ -1,3 +1,7 @@
+/*
+ * group member(s):
+ *      Ronan Kelley
+ */
 %{
 #define WIDTH 640
 #define HEIGHT 480
