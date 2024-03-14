@@ -12,8 +12,7 @@ extern void yyerror(const char* s);
 
 %%
 
-
-[ \t\r\n]			;
-.			{ yyerror("Lexing Syntax error.\n"); } 
+[ \t\r\n]           { ; }
+.                   { yyerror("Lexing Syntax error.\n"); } 
 
 %%
