@@ -66,41 +66,54 @@ void shutdown();
 %token COLOR
 %token CLEAR
 %token TURN
-%token LOOP
 %token MOVE
 %token NUMBER
 %token END
 %token SAVE
 %token PLUS SUB MULT DIV
+// -- begin student added tokens -- //
+%token GOTO
+%token WHERE
+// -- end student added tokens -- //
 %token<s> STRING QSTRING
 %type<f> expression expression_list NUMBER
 
 %%
 
-program:        statement_list END                  { printf("Program complete."); shutdown(); exit(0); }
+program:        statement_list END                      { printf("Program complete."); shutdown(); exit(0); }
         ;
-statement_list: statement                    
+statement_list: statement
         |       statement statement_list
         ;
-statement:      command SEP                         { prompt(); }
-        |       error '\n'                          { yyerrok; prompt(); }
+statement:      command SEP                             { prompt(); }
+        |       error '\n'                              { yyerrok; prompt(); }
         ;
-command:        PENUP                               { penup(); }
+command:        PENUP                                   { penup(); }
+        |       PENDOWN                                 { pendown(); }
+        |       PRINT STRING                            { printf("%s\n", yylval.s); }
+        |       SAVE STRING                             { save(yylval.s); }
+        |       CLEAR                                   { clear(); }
+        |       WHERE                                   { printf("(x, y): (%2.f, %.2f)\n", x, y); }
+        |       TURN NUMBER                             { turn((int) $2); }
+        |       MOVE NUMBER                             { move((int) $2); }
+        |       CHANGE_COLOR NUMBER NUMBER NUMBER       { printf("got here\n"); change_color((int) $2,(int) $3,(int) $4); }
         ;
 expression_list:
-        |    // Complete these and any missing rules
+        |       expression expression_list
+        |       expression
         ;
-expression:         NUMBER PLUS expression          { $$ = $1 + $3; }
-        |           NUMBER MULT expression          { $$ = $1 * $3; }
-        |           NUMBER SUB expression           { $$ = $1 - $3; }
-        |           NUMBER DIV expression           { $$ = $1 / $3; }
-        |           NUMBER
+expression:     NUMBER PLUS expression                  { $$ = $1 + $3; }
+        |       NUMBER MULT expression                  { $$ = $1 * $3; }
+        |       NUMBER SUB expression                   { $$ = $1 - $3; }
+        |       NUMBER DIV expression                   { $$ = $1 / $3; }
+        |       NUMBER
         ;
 
 %%
 
 int main(int argc, char** argv){
     startup();
+    // yyparse();
     return 0;
 }
 
