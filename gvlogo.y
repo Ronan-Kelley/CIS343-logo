@@ -43,6 +43,7 @@ void penup();
 void pendown();
 void move(int num);
 void turn(int dir);
+void turt_goto(int new_x, int new_y);
 void output(const char* s);
 void change_color(int r, int g, int b);
 void clear();
@@ -93,10 +94,11 @@ command:        PENUP                                   { penup(); }
         |       PRINT STRING                            { printf("%s\n", yylval.s); }
         |       SAVE STRING                             { save(yylval.s); }
         |       CLEAR                                   { clear(); }
-        |       WHERE                                   { printf("(x, y): (%2.f, %.2f)\n", x, y); }
+        |       WHERE                                   { printf("(x, y): (%.2f, %.2f)\n", x, y); }
         |       TURN NUMBER                             { turn((int) $2); }
         |       MOVE NUMBER                             { move((int) $2); }
-        |       CHANGE_COLOR NUMBER NUMBER NUMBER       { printf("got here\n"); change_color((int) $2,(int) $3,(int) $4); }
+        |       CHANGE_COLOR NUMBER NUMBER NUMBER       { change_color((int) $2,(int) $3,(int) $4); }
+        |       GOTO NUMBER NUMBER                      { turt_goto((int) $2, (int) $3); } // TODO fix this one
         ;
 expression_list:
         |       expression expression_list
@@ -149,6 +151,16 @@ void turn(int dir){
     event.type = PEN_EVENT;
     event.user.code = 2;
     event.user.data1 = dir;
+    SDL_PushEvent(&event);
+}
+
+// not named goto because that's a reserved keyword in C
+void turt_goto(int new_x, int new_y)
+{
+    event.type = DRAW_EVENT;
+    event.user.code = 3;
+    event.user.data1 = new_x;
+    event.user.data2 = new_y;
     SDL_PushEvent(&event);
 }
 
@@ -224,6 +236,33 @@ void startup(){
                     SDL_SetTextureColorMod(texture, current_color.r, current_color.g, current_color.b);
                     SDL_SetRenderTarget(rend, NULL);
                     SDL_RenderClear(rend);
+                } else if (e.user.code == 3){
+                    // STUDENT ADDED EVENT BAYBEE! I don't feel like sending a chain of
+                    // turn/move events to accomplish the goto implementation so we're
+                    // doin' it right here as its own event. Would it make more sense if it
+                    // was event number 2? Yes. Am I going to change every call to event 2
+                    // to a 3 (I'm pretty sure it's just the clear function but still)? No,
+                    // it doesn't seem like it.
+                    //
+                    // on an unrelated note, my neovim setup is not real sure what to do with
+                    // bison files like this one. I'm pretty sure treesitter can handle syntax
+                    // highlighting 2 languages within one file like this - it does for markdown,
+                    // at least - but I don't know enough about configuring it to do that myself.
+                    // a deep dive for another day, I suppose.
+
+                    // this should really just be a struct that stores an X and a Y but in my
+                    // defense this *is* slightly faster to implement
+                    int x2 = (int)event.user.data1;
+                    int y2 = (int)event.user.data2;
+
+                    if(pen_state != 0){
+                        SDL_SetRenderTarget(rend, texture);
+                        SDL_RenderDrawLine(rend, x, y, x2, y2);
+                        SDL_SetRenderTarget(rend, NULL);
+                        SDL_RenderCopy(rend, texture, NULL, NULL);
+                    }
+                    x = x2;
+                    y = y2;
                 }
             }
             if(e.type == COLOR_EVENT){
