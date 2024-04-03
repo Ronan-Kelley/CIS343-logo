@@ -33,6 +33,7 @@ static double x = WIDTH / 2;
 static double y = HEIGHT / 2;
 static int pen_state = 1;
 static double direction = 0.0;
+static double variables[26];
 
 int yylex(void);
 int yyerror(const char* s);
@@ -49,6 +50,7 @@ void change_color(int r, int g, int b);
 void clear();
 void save(const char* path);
 void shutdown();
+double getVarValue(const char* var);
 
 %}
 
@@ -75,39 +77,47 @@ void shutdown();
 // -- begin student added tokens -- //
 %token GOTO
 %token WHERE
+%token<s> VARIABLE
+%token EQUAL
 // -- end student added tokens -- //
 %token<s> STRING QSTRING
 %type<f> expression expression_list NUMBER
 
 %%
 
-program:        statement_list END                      { printf("Program complete."); shutdown(); exit(0); }
+program:        statement_list END                              { printf("Program complete."); shutdown(); exit(0); }
         ;
 statement_list: statement
         |       statement statement_list
         ;
-statement:      command SEP                             { prompt(); }
-        |       error '\n'                              { yyerrok; prompt(); }
+statement:      command SEP                                     { prompt(); }
+        |       error '\n'                                      { yyerrok; prompt(); }
         ;
-command:        PENUP                                   { penup(); }
-        |       PENDOWN                                 { pendown(); }
-        |       PRINT STRING                            { printf("%s\n", yylval.s); }
-        |       SAVE STRING                             { save(yylval.s); }
-        |       CLEAR                                   { clear(); }
-        |       WHERE                                   { printf("(x, y): (%.2f, %.2f)\n", x, y); }
-        |       TURN NUMBER                             { turn((int) $2); }
-        |       MOVE NUMBER                             { move((int) $2); }
-        |       CHANGE_COLOR NUMBER NUMBER NUMBER       { change_color((int) $2,(int) $3,(int) $4); }
-        |       GOTO NUMBER NUMBER                      { turt_goto((int) $2, (int) $3); } // TODO fix this one
+command:        PENUP                                           { penup(); }
+        |       PENDOWN                                         { pendown(); }
+        |       PRINT STRING                                    { printf("%s\n", yylval.s); }
+        |       PRINT expression                                { printf("%f\n", $2); }
+        |       PRINT VARIABLE                                  { printf("%s = %f\n", $2, getVarValue($2)); }
+        |       SAVE STRING                                     { save(yylval.s); }
+        |       CLEAR                                           { clear(); }
+        |       WHERE                                           { printf("(x, y): (%.2f, %.2f)\n", x, y); }
+        |       TURN expression                                 { turn((int) $2); }
+        |       TURN VARIABLE                                   { turn((int) getVarValue($2)); }
+        |       MOVE expression                                 { move((int) $2); }
+        |       MOVE VARIABLE                                   { move((int) getVarValue($2)); }
+        |       CHANGE_COLOR expression expression expression   { change_color((int) $2,(int) $3,(int) $4); }
+        |       CHANGE_COLOR VARIABLE VARIABLE VARIABLE         { change_color((int) getVarValue($2), (int) getVarValue($3), (int) getVarValue($4)); }
+        |       GOTO expression expression                      { turt_goto((int) $2, (int) $3); }
+        |       GOTO VARIABLE VARIABLE                          { turt_goto((int) getVarValue($2), (int) getVarValue($3)); }
+        |       VARIABLE EQUAL expression                       { variables[$1[0] - 'A'] = $3; }
         ;
-expression_list:
+expression_list:expression
         |       expression expression_list
-        |       expression
         ;
-expression:     NUMBER PLUS expression                  { $$ = $1 + $3; }
-        |       NUMBER MULT expression                  { $$ = $1 * $3; }
-        |       NUMBER SUB expression                   { $$ = $1 - $3; }
-        |       NUMBER DIV expression                   { $$ = $1 / $3; }
+expression:     NUMBER PLUS expression                          { $$ = $1 + $3; }
+        |       NUMBER MULT expression                          { $$ = $1 * $3; }
+        |       NUMBER SUB expression                           { $$ = $1 - $3; }
+        |       NUMBER DIV expression                           { $$ = $1 / $3; }
         |       NUMBER
         ;
 
@@ -164,11 +174,21 @@ void turt_goto(int new_x, int new_y)
     SDL_PushEvent(&event);
 }
 
+double getVarValue(const char* var)
+{
+    // you best believe I am not doing any safety checks
+    // just write perfect code every time
+    return variables[var[0] - 'A'];
+}
+
 void output(const char* s){
     printf("%s\n", s);
 }
 
 void change_color(int r, int g, int b){
+    r = r % 255;
+    g = g % 255;
+    b = b % 255;
     event.type = COLOR_EVENT;
     current_color.r = r;
     current_color.g = g;
@@ -214,8 +234,11 @@ void startup(){
                 if(e.user.code == 2){
                     double degrees = ((int)e.user.data1) * M_PI / 180.0;
                     direction += degrees;
+                // else added by student to fix the "turn" command effectively
+                // also calling "pendown" at the same time
+                } else {
+                    pen_state = e.user.code;
                 }
-                pen_state = e.user.code;
             }
             if(e.type == DRAW_EVENT){
                 if(e.user.code == 1){

@@ -12,6 +12,7 @@ extern void yyerror(const char* s);
 
 %%
 
+\$[A-Z]                 { yytext[0] = yytext[1]; yytext[1] = '\0'; yylval.s = yytext; return VARIABLE; }
 \"[^"]+\"               { yylval.s = yytext; return STRING; }
 [A-Za-z]+\.[A-Za-z]+    { yylval.s = yytext; return STRING; }
 -?[0-9]+(\.[0-9]+)?     { yylval.f = atof(yytext); return NUMBER; }
@@ -19,6 +20,7 @@ extern void yyerror(const char* s);
 -                       { return SUB; }
 \*                      { return MULT; }
 \/                      { return DIV; }
+=                       { return EQUAL; }
 penup                   { return PENUP; }
 pendown                 { return PENDOWN; }
 print                   { return PRINT; }

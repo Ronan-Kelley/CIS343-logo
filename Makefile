@@ -1,6 +1,9 @@
 build: lex.yy.c gvlogo.tab.c gvlogo.tab.h
 	gcc lex.yy.c gvlogo.tab.c -lSDL2 -lfl -lm
 
+run: build
+	./a.out
+
 lex.yy.c: gvlogo.l
 	flex gvlogo.l
 
